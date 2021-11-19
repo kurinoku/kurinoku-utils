@@ -89,10 +89,21 @@
   (->* (string?) (color/c bg-color/c) colored-string?) 
   (colored-string str color bg))
 
-(define/contract (make-colorizer/random)
-  (-> (-> string? colored-string?))
-  (define c (random-ref (remove* '(reset #f) (hash-keys *color-symbols*))))
+(define/contract (make-colorizer color [bg #f])
+  (->* (color/c) (bg-color/c) (-> string? colored-string?))
   (lambda (str)
-    (->colored-string str c (get-good-bg c))))
+    (->colored-string str color bg)))
+
+(define (get-random-color avoid)
+  (random-ref (remove* (append avoid '(reset #f)) (hash-keys *color-symbols*))))
+
+(define/contract (make-colorizer/random #:bg-color [bg 'random] #:avoid [avoid '()])
+  (->* () (#:bg-color (or/c 'random 'get-good bg-color/c) #:avoid (listof color/c)) (-> string? colored-string?))
+  (define c (get-random-color avoid))
+  (make-colorizer c
+                  (case bg
+                    [(get-good) (get-good-bg c)]
+                    [(random) (random-ref (remove* '(reset #f) (hash-keys *bg-colors*)))]
+                    [else bg])))
   
 
