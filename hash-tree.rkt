@@ -1,17 +1,38 @@
 #lang racket
 
+(require racket/struct)
+
 (provide make-hash-tree
          hash-tree?
          hash-tree-ref
+         hash-tree-ref!
          hash-tree-set!
          hash-tree-set*!
-         hash-tree-keys)
+         hash-tree-keys
+         hash-tree-update!)
 
 (module+ test
   (require rackunit))
 
-(struct hash-tree (root [max-depth #:mutable]))
-(struct node-tree (tree has-value? value) #:mutable)
+(struct hash-tree (root [max-depth #:mutable])
+  #:methods gen:custom-write
+  [(define write-proc
+     (make-constructor-style-printer
+      (lambda (o) (format "~a[depth=~a]" 'hash-tree (hash-tree-max-depth o)))
+      (lambda (o)
+        (list (hash->list (hash-tree-root o))))))])
+
+(struct node-tree (tree has-value? value) #:mutable
+  #:methods gen:custom-write
+  [(define write-proc
+     (make-constructor-style-printer
+      (lambda (_) 'node-tree)
+      (lambda (obj) `(,@(if (node-tree-has-value? obj) (list (node-tree-value obj)) '())
+                      ,(hash->list (node-tree-tree obj))))))])
+
+(define (set-value-of-node-tree! nt value)
+  (set-node-tree-value! nt value)
+  (set-node-tree-has-value?! nt #t))
 
 (define (make-hash-tree) (hash-tree (make-hash) 0))
 
@@ -33,7 +54,10 @@
       [(node-tree tree _ _)
        (hash-ref tree p-part failure-result)])))
 
-(define (hash-tree-ref ht path [failure-result #f])
+(define (hash-tree-ref ht path
+                       [failure-result
+                        (lambda ()
+                          (raise-arguments-error 'hash-tree-ref "no value found for path+" "path" path))])
   (define result (-hash-tree-ref
                   ht path
                   not-found
@@ -51,8 +75,7 @@
   (define path-len (length (parse-path path)))
   (when (< (hash-tree-max-depth ht) path-len)
     (set-hash-tree-max-depth! ht path-len))
-  (set-node-tree-has-value?! last #t)
-  (set-node-tree-value! last value)
+  (set-value-of-node-tree! last value)
   (void))
 
 (module+ test
@@ -78,12 +101,47 @@
                   #f #f)))
     3)))
 
+(define (hash-tree-ref! ht path to-set)
+  (define result (-hash-tree-ref ht path make-default-node hash-ref!))
+  (match result
+    [(node-tree tree #t value) value]
+    [(node-tree tree #f _) (set-value-of-node-tree! result to-set) to-set]))
+
+(module+ test
+   (let ([ht (make-hash-tree)]
+         [uniq (gensym)])
+     (check-equal? (hash-tree-ref! ht (list 'a 'b 'c) 'ABC) 'ABC)
+     
+     (hash-tree-set! ht (list 'a 'c) uniq)
+     (check-equal? (hash-tree-ref! ht (list 'a 'c) #f) uniq)
+     ))
+
 (define (hash-tree-set*! ht path value . path-then-value)
   (hash-tree-set! ht path value)
   (for ([sl (in-slice 2 (in-list path-then-value))])
     (match sl
       [(list path value)
        (hash-tree-set! ht path value)])))
+
+(define (hash-tree-update! ht path updater
+                          [failure-result (lambda ()
+                                            (raise-arguments-error
+                                             'hash-tree-update
+                                             (format "no value found for path: ~e" path)))])
+  (define last (-hash-tree-ref ht path make-default-node hash-ref!))
+  (match last
+    [(node-tree _ #t value)
+     (set-value-of-node-tree! last (updater value))]
+    [(node-tree _ #f value)
+     (set-value-of-node-tree! last (updater (if (procedure? failure-result) (failure-result) failure-result)))]))
+
+(module+ test
+  (let ([ht (make-hash-tree)])
+    (hash-tree-update! ht '(1 2 3) values #f)
+    (check-equal? (hash-tree-ref ht '(1 2 3)) #f)
+    (hash-tree-update! ht '(1 2 3) (lambda (v) 'hello))
+    (check-equal? (hash-tree-ref ht '(1 2 3)) 'hello)
+    ))
 
 (struct ht-key (key)) ; wrap to save lists since we use flatten in some parts
 
@@ -104,7 +162,7 @@
         [else
          (define ((get-and-append-to-subkeys h) k)
            (let* ([new-ht (hash-ref h k)]
-                  [subkeys (get-all-keys-at-level new-ht (and n (sub1 n)))])
+                  [subkeys (flatten (get-all-keys-at-level new-ht (and n (sub1 n))))])
              (map (append-ht-key (list k)) subkeys)))
 
          (define (do h)
@@ -130,7 +188,7 @@
     [(not path)
      (match ht
        [(hash-tree root _)
-        (hash-keys root)])]
+        (map list (hash-keys root))])]
     [(exact-nonnegative-integer? path)
      (map ht-key-key (flatten (get-all-keys-at-level ht path)))]
     [(eq? path 'all)
@@ -143,7 +201,8 @@
                   #:break-when (lambda (v) (eq? not-found v))))
      (if (eq? not-found last-hash)
          '()
-         (hash-keys ((if (hash-tree? last-hash) hash-tree-root node-tree-tree) last-hash)))]))
+         (for/list ([k (in-hash-keys ((if (hash-tree? last-hash) hash-tree-root node-tree-tree) last-hash))])
+           (append path (list k))))]))
 
 (module+ test
   (define ht

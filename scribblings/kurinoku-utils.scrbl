@@ -17,17 +17,17 @@ Miscellanous utilities
 @defproc[(make-hash-tree) hash-tree?]
 @defproc[(hash-tree-ref [ht hash-tree?]
                         [path (or list? (and any/c (not/c list?)))]
-                        [failure-result failure-result/c #f])
-         any/c]
+                        [failure-result failure-result/c (lambda () (raise-arguments-error ...))])
+         any/c]{Analogous to @racket[hash-ref]}
 @defproc[(hash-tree-set! [ht hash-tree?]
                          [path (or list? (and any/c (not/c list?)))]
                          [value any/c])
-         void?]
+         void?]{Analogous to @racket[hash-set!]}
 @defproc[(hash-tree-set*! [ht hash-tree?]
                           [path (or list? (and any/c (not/c list?)))]
                           [value any/c]
                           ... ...)
-         void?]
+         void?]{Analogous to @racket[hash-set*!]}
 @defproc[(hash-tree-keys [ht hash-tree?] [path (or/c 'all #f exact-nonnegative-integer? list?)])
          list?]
 
