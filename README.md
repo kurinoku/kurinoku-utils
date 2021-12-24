@@ -1,3 +1,3 @@
 kurinoku-utils
 ==============
-README text here.
+Some misc utilities that I've made or fetch from the internet.
