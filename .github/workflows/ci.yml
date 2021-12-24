@@ -19,6 +19,6 @@ jobs:
       - name: Installing kurinoku-utils and its dependencies
         run: raco pkg install --no-docs --auto --name kurinoku-utils
       - name: Compiling kurinoku-utils and building its docs
-        run: raco setup --check-pkg-deps --unused-pkg-deps kurinoku-utils
+        run: raco setup --check-pkg-deps --unused-pkg-deps --pkgs kurinoku-utils
       - name: Testing kurinoku-utils
         run: raco test -x -p kurinoku-utils
