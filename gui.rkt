@@ -5,7 +5,7 @@
 
 (provide kurinoku:list-box%
          list-box-append*-mixin
-         list-box-key-event-callback-mixin)
+         window-key-event-callback-mixin)
 
 (define (list-box-append*-mixin lb%)
   (class lb%
@@ -22,7 +22,7 @@
         (set-string index s i))
       (void))))
 
-(define (list-box-key-event-callback-mixin lb%)
+(define (window-key-event-callback-mixin lb%)
   (class lb%
     (super-new)
     (init-field [(key-callback on-key-event) #f])
@@ -35,7 +35,7 @@
 
 (define kurinoku:list-box%
   ((compose
-    list-box-key-event-callback-mixin
+    window-key-event-callback-mixin
     list-box-append*-mixin)
    list-box%))
     
