@@ -27,7 +27,7 @@
         (msg)
         (loop))))
 
-  (pool (for/list ([i (in-range 4)]) (thread target))
+  (pool (for/list ([i (in-range n)]) (thread target))
         ch))
 
 (define (pool-put p thunk)
