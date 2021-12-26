@@ -8,6 +8,9 @@
          format/hash:replace-positions
          format/hash)
 
+(module+ test
+  (require rackunit))
+
 (define DEFAULT-PLACEHOLDER-REGEX #px"\\{([^\\{\\}]*)\\}")
 
 (define (format/hash:find-positions fmt [placeholder DEFAULT-PLACEHOLDER-REGEX])
@@ -51,10 +54,18 @@
        (values
         (append (reverse (string->list (hash-ref h key hash-ref-error))) result)
         marked)]
-      [(equal? end i) (values result (stream-rest marked))]
-      [(<= start i end) (values result marked)]
+      [(equal? (sub1 end) i) (values result (stream-rest marked))]
+      [(< start i end) (values result marked)]
       [else (add-c)])))
 
 (define (format/hash fmt h #:placeholder [placeholder DEFAULT-PLACEHOLDER-REGEX])
   (define positions (format/hash:find-positions fmt placeholder))
   (format/hash:replace-positions positions fmt h (on-not-found 'format/hash)))
+
+(module+ test
+  (check-equal? (format/hash "{} abc {ultra}." (hash "" "hello" "ultra" "man"))
+                "hello abc man.")
+
+  (check-exn #px"^format/hash: placeholder not found in hash table"
+             (lambda () (format/hash "{}" (hash))))
+  )
