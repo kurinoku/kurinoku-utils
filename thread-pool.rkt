@@ -50,7 +50,7 @@
 
 (define (for-each/pool f l0 #:size [size 4] . ls)
   (define p (make-pool size))
-  (apply pool-for-each p f l0 ls))
+  (apply pool-for-each #:close? #t p f l0 ls))
 
 (define (map/pool f l0 #:size [size 4] . ls)
   (define p (make-pool size))
