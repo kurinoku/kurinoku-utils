@@ -9,7 +9,8 @@
           [query-user-version (-> connection? integer?)]
           [set-user-version! (-> connection? integer? void?)]
           [sql-null->false-or-apply (-> any/c (-> any/c any/c) any)]
-          [false->sql-null-or-apply (-> any/c (-> any/c any/c) any)]))
+          [false->sql-null-or-apply (-> any/c (-> any/c any/c) any)]
+          [db-simple-result-insert-id (-> simple-result? (or/c integer? #f))]))
 
 (define (query-user-version conn)
   (query-value conn "PRAGMA user_version"))
@@ -26,3 +27,6 @@
   (if (false? v)
       sql-null
       (f v)))
+
+(define (db-simple-result-insert-id result)
+  (cdr (assoc 'insert-id (simple-result-info result))))
